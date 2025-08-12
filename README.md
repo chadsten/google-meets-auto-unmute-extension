@@ -2,6 +2,8 @@
 
 A Chrome extension that automatically unmutes you when Google Meet mutes you due to the number of participants in the call.
 
+<img width="640" height="400" alt="auto-mute-ss" src="https://github.com/user-attachments/assets/87eac70d-6915-4b16-99a8-044daba4b91c" />
+
 ## Problem Solved
 
 When you join a Google Meet call with more than 6 participants, Google automatically mutes you and shows the message "You are muted due to the number of participants." This extension detects this scenario and automatically unmutes you, providing a seamless meeting experience.
