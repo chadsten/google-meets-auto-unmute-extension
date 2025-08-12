@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Google Meet Auto-Unmute</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>
+        <img src="images/icon32.png" alt="Meet Auto-Unmute" class="header-icon">
+        Meet Auto-Unmute
+      </h1>
+    </header>
+
+    <main>
+      <section class="settings" id="settingsSection" style="visibility: hidden;">
+        <!-- Settings will be populated dynamically from user's actual settings -->
+      </section>
+
+
+    </main>
+
+
+    <div class="welcome-banner" id="welcomeBanner" style="display: none;">
+      <h2>Welcome to Meet Auto-Unmute!</h2>
+      <p>This extension will automatically unmute you when Google Meet mutes you due to the number of participants.</p>
+      <button class="btn btn-primary" id="dismissWelcome">Got it!</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
