@@ -1,3 +1,31 @@
+// Timing constants - all time-based values in milliseconds
+export const TIMING_CONSTANTS = {
+  MEETING_DETECTION_TIMEOUT: 30000, // 30 seconds to wait for meeting to load
+  RAPID_UNMUTE_PREVENTION_DELAY: 3000, // 3 second cooldown between unmutes
+  MEETING_POLL_INTERVAL: 1000, // 1 second polling for meeting detection
+  OPERATION_VERIFICATION_DELAY: 500, // Post-action verification wait
+  DEBOUNCE_TIMEOUT: 300, // Debounce delay for UI interactions
+  NOTIFICATION_DISPLAY_TIME: 2000, // How long to show success notifications
+  POINTER_EVENT_DELAY: 50, // Delay between pointer down/up events
+  UI_STABILIZATION_DELAY: 100 // Delay to allow UI to stabilize
+} as const;
+
+// UI constants - slider and interface constraints
+export const UI_CONSTANTS = {
+  SLIDER_MIN_VALUE: 0,
+  SLIDER_MAX_VALUE: 3000,
+  SLIDER_STEP_SIZE: 50
+} as const;
+
+// Message types for extension component communication
+export const MESSAGE_TYPES = {
+  GET_SETTINGS: 'GET_SETTINGS',
+  SET_SETTINGS: 'SET_SETTINGS', 
+  AUTO_UNMUTED: 'AUTO_UNMUTED',
+  AUTO_MUTED: 'AUTO_MUTED',
+  PING: 'PING'
+} as const;
+
 // Core extension settings - all user-configurable options
 export interface ExtensionSettings {
   enabled: boolean; // Auto-unmute when muted in Google Meet
@@ -15,7 +43,7 @@ export const DEFAULT_SETTINGS: ExtensionSettings = {
 
 // Message structure for extension component communication
 export interface MessagePayload {
-  type: 'GET_SETTINGS' | 'SET_SETTINGS' | 'AUTO_UNMUTED' | 'AUTO_MUTED' | 'PING';
+  type: keyof typeof MESSAGE_TYPES;
   data?: unknown;
 }
 

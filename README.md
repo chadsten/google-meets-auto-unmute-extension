@@ -4,16 +4,22 @@ A Chrome extension that automatically unmutes you when Google Meet mutes you due
 
 <img width="640" height="400" alt="auto-mute-ss" src="https://github.com/user-attachments/assets/87eac70d-6915-4b16-99a8-044daba4b91c" />
 
-## Problem Solved
-
-When you join a Google Meet call with more than 6 participants, Google automatically mutes you and shows the message "You are muted due to the number of participants." This extension detects this scenario and automatically unmutes you, providing a seamless meeting experience.
-
 ## Features
 
-- **Automatic Unmute**: Instantly detects when you're auto-muted and unmutes you
-- **Smart Detection**: Uses MutationObserver to monitor Google Meet's DOM changes
-- **Customizable Delay**: Set the delay before auto-unmuting (0-3000ms)
+- **Automatic Unmute**: Instantly detects when you're auto-muted by Google Meet and unmutes you
+- **Auto-Mute on Join**: Optionally mute yourself automatically when joining any meeting
+- **Advanced Button Detection**: Robust mute button detection across different Meet UI versions and languages
+- **Smart Injection System**: Prevents duplicate script injection with intelligent tab detection
+- **Customizable Timing**: Fine-tune delays from 0-3000ms in 50ms increments for optimal performance
 - **Privacy Focused**: All processing happens locally, no data sent to external servers
+
+## Settings
+
+Access settings by clicking the extension icon in Chrome's toolbar:
+
+- **Auto-Unmute on Large Calls**: Automatically unmute when Google Meet mutes you due to participant count
+- **Auto-Mute on All Calls**: Automatically mute yourself when joining any meeting (mutually exclusive with auto-unmute)
+- **Action Delay**: Fine-tune timing from 0-3000ms in 50ms increments for optimal performance with your system
 
 ## Installation
 
@@ -74,31 +80,18 @@ yarn clean
 ### Project Structure
 ```
 src/
-├── background/          # Service worker for background tasks
-├── content/            # Content script injected into Meet pages  
-├── popup/              # Extension popup UI
-├── types/              # TypeScript type definitions
+├── background/         # Service worker for tab detection and settings management
+├── content/            # Content script injected into Meet pages with smart detection
+├── popup/              # Extension popup UI with real-time settings sync
+├── types/              # TypeScript type definitions and constants
+│   └── settings.ts     # TIMING_CONSTANTS, UI_CONSTANTS, MESSAGE_TYPES
+├── utils/              # Shared utilities
+│   └── settingsManager.ts  # Centralized Chrome storage management
 public/
-├── manifest.json       # Extension manifest
-├── images/             # Extension icons
-dist/                   # Built extension files
+├── manifest.json       # Extension manifest (Manifest V3)
+├── images/             # Extension icons (16px, 32px, 48px, 128px, SVG)
+dist/                   # Built extension files for Chrome
 ```
-
-## How It Works
-
-1. **Detection**: The content script uses MutationObserver to watch for changes in Google Meet's DOM
-2. **Identification**: Recognizes mute button state changes and auto-mute notifications
-3. **Action**: When auto-mute is detected, programmatically clicks the unmute button
-4. **Feedback**: Shows visual indicator and updates statistics
-5. **Debouncing**: Prevents rapid mute/unmute cycles with configurable delays
-
-## Settings
-
-Access settings by clicking the extension icon in Chrome's toolbar:
-
-- **Enable Auto-Unmute**: Toggle the main functionality on/off
-- **Debug Mode**: Enable detailed console logging
-- **Auto-Unmute Delay**: Time to wait before unmuting (0-3000ms)
 
 ## Privacy & Permissions
 

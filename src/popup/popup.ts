@@ -1,4 +1,4 @@
-import { ExtensionSettings, DEFAULT_SETTINGS } from '../types/settings';
+import { ExtensionSettings, DEFAULT_SETTINGS, MESSAGE_TYPES, UI_CONSTANTS, TIMING_CONSTANTS } from '../types/settings';
 
 class PopupController {
   private settings: ExtensionSettings = DEFAULT_SETTINGS;
@@ -37,7 +37,7 @@ class PopupController {
 
   private async loadSettings(): Promise<void> {
     try {
-      const response = await chrome.runtime.sendMessage({ type: 'GET_SETTINGS' });
+      const response = await chrome.runtime.sendMessage({ type: MESSAGE_TYPES.GET_SETTINGS });
       if (response) {
         this.settings = response;
       }
@@ -77,7 +77,7 @@ class PopupController {
           <span class="setting-description">This delay may be required to allow the page to load. If you're having issues, increase this by 50-100ms.</span>
         </div>
         <div class="slider-container">
-          <input type="range" id="delaySlider" min="0" max="3000" step="50" value="${this.settings.autoUnmuteDelay}">
+          <input type="range" id="delaySlider" min="${UI_CONSTANTS.SLIDER_MIN_VALUE}" max="${UI_CONSTANTS.SLIDER_MAX_VALUE}" step="${UI_CONSTANTS.SLIDER_STEP_SIZE}" value="${this.settings.autoUnmuteDelay}">
           <span class="slider-value" id="delayValue">${this.settings.autoUnmuteDelay}ms</span>
         </div>
       </div>
@@ -149,7 +149,7 @@ class PopupController {
   private async saveSettings(): Promise<void> {
     try {
       await chrome.runtime.sendMessage({
-        type: 'SET_SETTINGS',
+        type: MESSAGE_TYPES.SET_SETTINGS,
         data: this.settings
       });
       
@@ -159,7 +159,7 @@ class PopupController {
       for (const tab of tabs) {
         if (tab.id) {
           chrome.tabs.sendMessage(tab.id, {
-            type: 'SET_SETTINGS',
+            type: MESSAGE_TYPES.SET_SETTINGS,
             data: this.settings
           }).catch(() => {});
         }
@@ -177,7 +177,7 @@ class PopupController {
     
     this.saveDebounceTimer = setTimeout(() => {
       this.saveSettings();
-    }, 300);
+    }, TIMING_CONSTANTS.DEBOUNCE_TIMEOUT);
   }
 
   private showSavedIndicator(): void {
@@ -190,8 +190,8 @@ class PopupController {
       indicator.style.animation = 'slideDown 0.3s ease-out reverse';
       setTimeout(() => {
         indicator.remove();
-      }, 300);
-    }, 2000);
+      }, TIMING_CONSTANTS.DEBOUNCE_TIMEOUT);
+    }, TIMING_CONSTANTS.NOTIFICATION_DISPLAY_TIME);
   }
 
 }

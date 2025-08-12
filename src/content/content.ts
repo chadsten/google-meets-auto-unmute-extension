@@ -1,4 +1,5 @@
-import { ExtensionSettings, DEFAULT_SETTINGS, MuteState } from '../types/settings';
+import { ExtensionSettings, DEFAULT_SETTINGS, MuteState, TIMING_CONSTANTS, MESSAGE_TYPES } from '../types/settings';
+import { SettingsManager } from '../utils/settingsManager';
 
 // Only log essential info in debug mode
 if (DEFAULT_SETTINGS.debugMode) {
@@ -41,10 +42,7 @@ class MeetAutoUnmute {
 
   private async loadSettings(): Promise<void> {
     try {
-      const result = await chrome.storage.sync.get('settings');
-      if (result.settings) {
-        this.settings = { ...DEFAULT_SETTINGS, ...result.settings };
-      }
+      this.settings = await SettingsManager.loadSettings();
       this.log('Settings loaded:', this.settings);
     } catch (error) {
       this.logError('Failed to load settings:', error);
@@ -54,13 +52,13 @@ class MeetAutoUnmute {
   private setupMessageListener(): void {
     chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
       this.log('Received message:', request);
-      if (request.type === 'GET_SETTINGS') {
+      if (request.type === MESSAGE_TYPES.GET_SETTINGS) {
         sendResponse(this.settings);
-      } else if (request.type === 'SET_SETTINGS') {
+      } else if (request.type === MESSAGE_TYPES.SET_SETTINGS) {
         this.settings = request.data;
-        chrome.storage.sync.set({ settings: this.settings });
+        SettingsManager.saveSettings(this.settings);
         this.log('Settings updated:', this.settings);
-      } else if (request.type === 'PING') {
+      } else if (request.type === MESSAGE_TYPES.PING) {
         sendResponse({ status: 'pong' });
       }
       return true;
@@ -80,7 +78,7 @@ class MeetAutoUnmute {
         this.checkInitialMuteStateOnJoin();
         this.checkAutoMuteOnJoin();
       }
-    }, 1000);
+    }, TIMING_CONSTANTS.MEETING_POLL_INTERVAL);
 
     // Stop checking after 30 seconds if no meeting detected
     setTimeout(() => {
@@ -88,7 +86,7 @@ class MeetAutoUnmute {
       if (!this.hasJoinedMeeting) {
         this.log('Meeting not detected after 30 seconds');
       }
-    }, 30000);
+    }, TIMING_CONSTANTS.MEETING_DETECTION_TIMEOUT);
   }
 
 
@@ -109,7 +107,7 @@ class MeetAutoUnmute {
           this.scheduleAutoUnmute();
         }
       }
-    }, 100 + this.settings.autoUnmuteDelay);
+    }, TIMING_CONSTANTS.UI_STABILIZATION_DELAY + this.settings.autoUnmuteDelay);
   }
 
 
@@ -118,7 +116,7 @@ class MeetAutoUnmute {
     
     // Prevent rapid unmute loops - wait at least 3 seconds between unmutes
     const timeSinceLastUnmute = Date.now() - this.muteState.lastUnmuteTime;
-    if (timeSinceLastUnmute < 3000) {
+    if (timeSinceLastUnmute < TIMING_CONSTANTS.RAPID_UNMUTE_PREVENTION_DELAY) {
       this.log('Skipping auto-unmute: too soon after last unmute');
       return false;
     }
@@ -185,11 +183,11 @@ class MeetAutoUnmute {
           this.log(`Mute state after ${context.toLowerCase()}: ${newMuteState ? 'MUTED' : 'UNMUTED'}`);
           this.log(`=== ${context} COMPLETED ===`);
         }
-      }, 500);
+      }, TIMING_CONSTANTS.OPERATION_VERIFICATION_DELAY);
 
       // Send success message to background for auto actions only
       if (context.includes('AUTO')) {
-        const messageType = context.includes('UNMUTE') ? 'AUTO_UNMUTED' : 'AUTO_MUTED';
+        const messageType = context.includes('UNMUTE') ? MESSAGE_TYPES.AUTO_UNMUTED : MESSAGE_TYPES.AUTO_MUTED;
         await chrome.runtime.sendMessage({
           type: messageType,
           data: { timestamp: Date.now() }
@@ -348,7 +346,7 @@ class MeetAutoUnmute {
       setTimeout(() => {
         button.dispatchEvent(pointerUpEvent);
         this.log('Pointer events dispatched');
-      }, 50);
+      }, TIMING_CONSTANTS.POINTER_EVENT_DELAY);
     } catch (e) {
       this.log('Pointer events failed:', e);
     }
@@ -378,7 +376,7 @@ class MeetAutoUnmute {
     // Wait for UI to stabilize before auto-muting
     setTimeout(() => {
       this.scheduleAutoMute();
-    }, 100 + this.settings.autoUnmuteDelay);
+    }, TIMING_CONSTANTS.UI_STABILIZATION_DELAY + this.settings.autoUnmuteDelay);
   }
 
   private scheduleAutoMute(): void {

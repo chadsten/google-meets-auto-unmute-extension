@@ -1,4 +1,5 @@
-import { ExtensionSettings, DEFAULT_SETTINGS, MessagePayload } from '../types/settings';
+import { ExtensionSettings, DEFAULT_SETTINGS, MessagePayload, MESSAGE_TYPES } from '../types/settings';
+import { SettingsManager } from '../utils/settingsManager';
 
 class BackgroundService {
 
@@ -15,12 +16,9 @@ class BackgroundService {
 
   private async initializeSettings(): Promise<void> {
     try {
-      const result = await chrome.storage.sync.get('settings');
-      if (!result.settings) {
-        await chrome.storage.sync.set({ settings: DEFAULT_SETTINGS });
-        if (DEFAULT_SETTINGS.debugMode) {
-          console.log('Initialized default settings');
-        }
+      await SettingsManager.initializeDefaults();
+      if (DEFAULT_SETTINGS.debugMode) {
+        console.log('Initialized default settings');
       }
     } catch (error) {
       console.error('Failed to initialize settings:', error);
@@ -31,21 +29,21 @@ class BackgroundService {
     // Central message router for extension communication
     chrome.runtime.onMessage.addListener((request: MessagePayload, _sender, sendResponse) => {
       switch (request.type) {
-        case 'AUTO_UNMUTED':
-        case 'AUTO_MUTED':
+        case MESSAGE_TYPES.AUTO_UNMUTED:
+        case MESSAGE_TYPES.AUTO_MUTED:
           // Events logged by content script
           return false;
         
-        case 'GET_SETTINGS':
+        case MESSAGE_TYPES.GET_SETTINGS:
           this.getSettings().then(sendResponse);
           return true;
         
-        case 'SET_SETTINGS':
+        case MESSAGE_TYPES.SET_SETTINGS:
           this.setSettings(request.data as ExtensionSettings).then(sendResponse);
           return true;
         
         
-        case 'PING':
+        case MESSAGE_TYPES.PING:
           return false;
         
         default:
@@ -82,7 +80,7 @@ class BackgroundService {
   private async injectContentScriptIfNeeded(tabId: number): Promise<void> {
     // Ping-test to avoid duplicate injection - inject only if script not responding
     try {
-      await chrome.tabs.sendMessage(tabId, { type: 'PING' });
+      await chrome.tabs.sendMessage(tabId, { type: MESSAGE_TYPES.PING });
     } catch {
       try {
         await chrome.scripting.executeScript({
@@ -100,18 +98,12 @@ class BackgroundService {
 
 
   private async getSettings(): Promise<ExtensionSettings> {
-    try {
-      const result = await chrome.storage.sync.get('settings');
-      return result.settings || DEFAULT_SETTINGS;
-    } catch (error) {
-      console.error('Failed to get settings:', error);
-      return DEFAULT_SETTINGS;
-    }
+    return await SettingsManager.loadSettings();
   }
 
   private async setSettings(settings: ExtensionSettings): Promise<void> {
     try {
-      await chrome.storage.sync.set({ settings });
+      await SettingsManager.saveSettings(settings);
       if (DEFAULT_SETTINGS.debugMode) {
         console.log('Settings saved:', settings);
       }
@@ -121,7 +113,7 @@ class BackgroundService {
       for (const tab of tabs) {
         if (tab.id) {
           chrome.tabs.sendMessage(tab.id, {
-            type: 'SET_SETTINGS',
+            type: MESSAGE_TYPES.SET_SETTINGS,
             data: settings
           }).catch(() => {});
         }
