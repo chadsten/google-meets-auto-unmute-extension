@@ -74,10 +74,10 @@ class PopupController {
       <div class="setting-item slider-setting">
         <div class="setting-info">
           <span class="setting-label">Action Delay</span>
-          <span class="setting-description">This delay may be required to allow the page to load. If you're having issues, increase this by 100-200ms.</span>
+          <span class="setting-description">This delay may be required to allow the page to load. If you're having issues, increase this by 50-100ms.</span>
         </div>
         <div class="slider-container">
-          <input type="range" id="delaySlider" min="0" max="3000" step="100" value="${this.settings.autoUnmuteDelay}">
+          <input type="range" id="delaySlider" min="0" max="3000" step="50" value="${this.settings.autoUnmuteDelay}">
           <span class="slider-value" id="delayValue">${this.settings.autoUnmuteDelay}ms</span>
         </div>
       </div>

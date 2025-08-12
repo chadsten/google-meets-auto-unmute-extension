@@ -1,11 +1,8 @@
 import { ExtensionSettings, DEFAULT_SETTINGS, MuteState } from '../types/settings';
 
-// Only log these in debug mode since they can be noisy
+// Only log essential info in debug mode
 if (DEFAULT_SETTINGS.debugMode) {
-  console.log('[Meet Auto-Unmute] Content script file executing!');
-  console.log('[Meet Auto-Unmute] URL:', window.location.href);
-  console.log('[Meet Auto-Unmute] Chrome runtime available:', !!chrome?.runtime);
-  console.log('[Meet Auto-Unmute] Chrome storage available:', !!chrome?.storage);
+  console.log('[Meet Auto-Unmute] Content script loading on:', window.location.href);
 }
 
 // Set a global flag so popup can detect if script loaded
@@ -13,7 +10,6 @@ if (DEFAULT_SETTINGS.debugMode) {
 
 class MeetAutoUnmute {
   private settings: ExtensionSettings = DEFAULT_SETTINGS;
-  private observer: MutationObserver | null = null;
   private muteState: MuteState = {
     isMuted: false,
     lastUnmuteTime: 0,
@@ -24,14 +20,9 @@ class MeetAutoUnmute {
   private hasJoinedMeeting = false;
 
   constructor() {
-    if (DEFAULT_SETTINGS.debugMode) {
-      console.log('[Meet Auto-Unmute] Content script loaded!');
-    }
+    this.log('Content script loaded!');
     try {
       this.init();
-      if (DEFAULT_SETTINGS.debugMode) {
-        console.log('[Meet Auto-Unmute] Initialization started successfully');
-      }
     } catch (error) {
       console.error('[Meet Auto-Unmute] Constructor error:', error);
     }
@@ -39,21 +30,10 @@ class MeetAutoUnmute {
 
   private async init(): Promise<void> {
     try {
-      if (this.settings.debugMode) {
-        console.log('[Meet Auto-Unmute] Loading settings...');
-      }
       await this.loadSettings();
-      if (this.settings.debugMode) {
-        console.log('[Meet Auto-Unmute] Settings loaded, setting up message listener...');
-      }
       this.setupMessageListener();
-      if (this.settings.debugMode) {
-        console.log('[Meet Auto-Unmute] Message listener set up, waiting for meeting...');
-      }
       this.waitForMeetingToLoad();
-      if (this.settings.debugMode) {
-        console.log('[Meet Auto-Unmute] Initialization complete!');
-      }
+      this.log('Extension initialized successfully');
     } catch (error) {
       console.error('[Meet Auto-Unmute] Init error:', error);
     }
@@ -72,24 +52,14 @@ class MeetAutoUnmute {
   }
 
   private setupMessageListener(): void {
-    if (this.settings.debugMode) {
-      console.log('[Meet Auto-Unmute] Setting up message listener');
-    }
     chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
-      if (this.settings.debugMode) {
-        console.log('[Meet Auto-Unmute] Received message:', request);
-      }
+      this.log('Received message:', request);
       if (request.type === 'GET_SETTINGS') {
         sendResponse(this.settings);
       } else if (request.type === 'SET_SETTINGS') {
         this.settings = request.data;
         chrome.storage.sync.set({ settings: this.settings });
         this.log('Settings updated:', this.settings);
-        if (!this.settings.enabled && this.observer) {
-          this.stopObserving();
-        } else if (this.settings.enabled && !this.observer) {
-          this.startObserving();
-        }
       } else if (request.type === 'PING') {
         sendResponse({ status: 'pong' });
       }
@@ -106,8 +76,8 @@ class MeetAutoUnmute {
       if (meetingIndicator) {
         clearInterval(checkInterval);
         this.hasJoinedMeeting = true;
-        this.log('Meeting detected, starting observation');
-        this.startObserving();
+        this.log('Meeting detected, checking initial mute state only');
+        this.checkInitialMuteStateOnJoin();
         this.checkAutoMuteOnJoin();
       }
     }, 1000);
@@ -122,94 +92,26 @@ class MeetAutoUnmute {
   }
 
 
-  private startObserving(): void {
-    if (!this.settings.enabled || this.observer) {
-      return;
-    }
-
-    this.observer = new MutationObserver((mutations) => {
-      this.handleMutations(mutations);
-    });
-
-    const config: MutationObserverInit = {
-      attributes: true,
-      attributeFilter: ['aria-label', 'data-is-muted', 'data-mute-state']
-    };
-
-    this.observer.observe(document.body, config);
-    this.log('Started observing DOM mutations');
-    
-    this.checkInitialMuteState();
-  }
-
-  private stopObserving(): void {
-    if (this.observer) {
-      this.observer.disconnect();
-      this.observer = null;
-      this.log('Stopped observing DOM mutations');
-    }
-  }
-
-  private handleMutations(mutations: MutationRecord[]): void {
-    if (!this.settings.enabled || this.isProcessing) {
-      return;
-    }
-
-    for (const mutation of mutations) {
-      if (mutation.type === 'attributes') {
-        const target = mutation.target as HTMLElement;
-        
-        if (this.isMuteButton(target)) {
-          this.checkMuteStateChange();
-        }
-      }
-    }
-  }
-
-  private isMuteButton(element: HTMLElement): boolean {
-    const ariaLabel = element.getAttribute('aria-label')?.toLowerCase() || '';
-    return ariaLabel.includes('microphone') || 
-           ariaLabel.includes('mic') ||
-           element.hasAttribute('data-is-muted') ||
-           element.hasAttribute('data-mute-state');
-  }
 
 
-  private checkInitialMuteState(): void {
+
+  private checkInitialMuteStateOnJoin(): void {
     setTimeout(() => {
       const muteButton = this.findMuteButton();
       if (muteButton) {
         const isMuted = this.isMuted(muteButton);
         this.muteState.isMuted = isMuted;
-        this.log(`Initial mute state: ${isMuted ? 'MUTED' : 'UNMUTED'}`);
+        this.log(`Initial mute state on join: ${isMuted ? 'MUTED' : 'UNMUTED'}`);
         
-        // If initially muted and auto-unmute is enabled, schedule auto-unmute
+        // If initially muted when joining and auto-unmute is enabled, unmute once
         if (isMuted && this.shouldAutoUnmute()) {
-          this.log('Page loaded with mute state - scheduling auto-unmute');
+          this.log('Joined meeting in muted state - performing one-time auto-unmute');
           this.scheduleAutoUnmute();
         }
       }
-    }, 2000);
+    }, 100 + this.settings.autoUnmuteDelay);
   }
 
-  private checkMuteStateChange(): void {
-    const muteButton = this.findMuteButton();
-    if (!muteButton) {
-      return;
-    }
-
-    const isMuted = this.isMuted(muteButton);
-    const previouslyMuted = this.muteState.isMuted;
-
-    if (isMuted !== previouslyMuted) {
-      this.muteState.isMuted = isMuted;
-      this.log(`Mute state changed: ${isMuted ? 'MUTED' : 'UNMUTED'}`);
-
-      if (isMuted && this.shouldAutoUnmute()) {
-        this.scheduleAutoUnmute();
-      }
-    }
-  }
 
   private shouldAutoUnmute(): boolean {
     if (!this.settings.enabled) { return false; }
@@ -250,9 +152,7 @@ class MeetAutoUnmute {
     this.isProcessing = true;
 
     try {
-      if (this.settings.debugMode) {
-        console.log(`[Meet Auto-Unmute] === ${context} STARTED ===`);
-      }
+      this.log(`=== ${context} STARTED ===`);
       this.log(`=== ${context} STARTED ===`);
       
       const muteButton = this.findMuteButton();
